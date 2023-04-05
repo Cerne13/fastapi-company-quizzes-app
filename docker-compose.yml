@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  postgres:
+    container_name: "postgres"
+    image: "postgres"
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+
+
+  test_db:
+    container_name: "test_db"
+    image: "postgres"
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - ${TEST_DB_PORT}:${POSTGRES_PORT}
+
+  redis:
+    container_name: "redis"
+    image: redis
+    env_file:
+      - ./.env
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    volumes:
+      - redis-data:/data
+
+  redis-commander:
+    container_name: "redis-commander"
+    image: rediscommander/redis-commander
+    environment:
+      - REDIS_HOSTS=local:redis:${REDIS_PORT}
+      - HTTP_USER=${REDIS_HTTP_USER}
+      - HTTP_PASSWORD=${REDIS_HTTP_PASS}
+    ports:
+      - ${REDIS_COMMANDER_PORT}:${REDIS_COMMANDER_PORT}
+    volumes:
+      - redis-data:/data
+    depends_on:
+      - redis
+
+  app:
+    container_name: "app"
+    build: .
+    restart: unless-stopped
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    working_dir: /app
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - ./.env
+    volumes:
+      - ./alembic:/app/alembic
+
+volumes:
+  redis-data:
